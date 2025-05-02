@@ -268,9 +268,9 @@ const updateBook = async (req, res, next) => {
     status,
     image_path,
   } = req.body;
-  console.log("req file ", req.file);
+  // console.log("req file ", req.file);
 
-  console.log("body", req.body);
+  // console.log("body", req.body);
 
   try {
     // find category_id
@@ -292,6 +292,13 @@ const updateBook = async (req, res, next) => {
         404
       );
     }
+
+    // 1) Look up the old URL in the DB
+    const existingBookImage = await pool.query(
+      "SELECT image_path from books WHERE book_id = $1",
+      [book_id]
+    );
+    const oldImageURl = existingBookImage.rows[0].image_path;
     let coverUrl = image_path;
 
     /// 1) If the client sent a new file, upload it
@@ -331,7 +338,13 @@ const updateBook = async (req, res, next) => {
     if (result.rows.length === 0) {
       throw new CustomError("Kitob topilmadi", 404);
     }
+    //Now that everything succeeded, delete the old file (if we uploaded a new one)
+    if (req.file && oldImageURl && oldImageURl.includes(bucketName)) {
+      const oldFilename = oldImageURl.split("/").pop();
+      await deleteFromGCS(oldFilename);
+    }
 
+    ///
     res.json({
       message: "Kitob muvaffaqiyatli tahrirlandi",
       status: "ok",

@@ -3,33 +3,23 @@ const morgan = require("morgan");
 const cors = require("cors");
 const app = express();
 const { connectDB } = require("./config/db.js");
-const { ensureBucket } = require("./middlewares/gcs.js");
 const errorHandler = require("./utils/errorHandler.js");
 const port = process.env.PORT || 3007;
 
-async function start() {
-  // this ensures the bucket exists. and connected
-  await ensureBucket();
-  // Middleware to parse JSON
-  app.use(express.json());
-  app.use(express.urlencoded({ extended: true }));
-  app.use(morgan("dev"));
-  app.use(cors());
-  // connect to DB
-  connectDB();
+// Middleware to parse JSON
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(morgan("dev"));
+app.use(cors());
+// connect to DB
+connectDB();
 
-  // Import and use routes
-  const indexRouter = require("./routes/index.js");
-  app.use("/", indexRouter);
+// Import and use routes
+const indexRouter = require("./routes/index.js");
+app.use("/", indexRouter);
 
-  // gloabal error handler
-  app.use(errorHandler);
-  app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
-  });
-}
-
-start().catch((err) => {
-  console.error("Failed to start app: ", err);
-  process.exit(1);
+// gloabal error handler
+app.use(errorHandler);
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });

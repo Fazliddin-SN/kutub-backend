@@ -118,10 +118,6 @@ const libraryController = {
     // console.log("req body ", req.body);
 
     try {
-      const regex = /^[\w.-]+@gmail\.com$/i;
-      if (!regex.test(email)) {
-        throw new CustomError("Email yarqosiz", 400);
-      }
       // Check if user already exists
       const userExists = await pool.query(
         "SELECT * FROM users WHERE email = $1",
@@ -161,33 +157,83 @@ const libraryController = {
     }
   },
 
-  // getMembers
   async getLibraryMembers(req, res, next) {
     const owner_id = req.user.id;
+    const page = parseInt(req.query.page) || 0;
+    const size = parseInt(req.query.size) || 15;
+    const { username, email, phone_number } = req.query;
+
     try {
       const library = await pool.query(
         "SELECT * FROM libraries WHERE owner_id = $1",
         [owner_id]
       );
-      if (!library) {
+
+      if (library.rows.length === 0) {
         throw new CustomError("Kutubxona topilmadi!", 404);
       }
-      const result = await pool.query(
-        "select u.user_id, u.full_name, u.username, u.email, u.address, u.phonenumber from users u join library_members lm on lm.user_id = u.user_id where lm.library_id = $1",
-        [library.rows[0].library_id]
+
+      const libraryId = library.rows[0].library_id;
+      // console.log("library id ", libraryId);
+
+      let whereConditions = ["lm.library_id = $1"];
+      let values = [libraryId];
+      let index = 2;
+
+      if (username) {
+        whereConditions.push(`u.username ILIKE $${index++}`);
+        values.push(`%${username}%`);
+      }
+
+      if (email) {
+        whereConditions.push(`u.email ILIKE $${index++}`);
+        values.push(`%${email}%`);
+      }
+
+      if (phone_number) {
+        whereConditions.push(`u.phonenumber ILIKE $${index++}`);
+        values.push(`%${phone_number}%`);
+      }
+
+      const whereClause = `WHERE ${whereConditions.join(" AND ")}`;
+      const offset = page * size;
+
+      const countQuery = `
+      SELECT COUNT(*) FROM users u 
+      JOIN library_members lm ON lm.user_id = u.user_id 
+      ${whereClause}
+    `;
+      const countResult = await pool.query(countQuery, values);
+      const totalItems = parseInt(countResult.rows[0].count);
+      // console.log("where clause ", whereClause);
+
+      const dataQuery = `
+      SELECT u.user_id, u.full_name, u.username, u.email, u.address, u.phonenumber FROM users u JOIN library_members lm ON lm.user_id = u.user_id ${whereClause} ORDER BY u.user_id DESC LIMIT $${index++} OFFSET $${index++}
+    `;
+      const dataValues = [...values, size, offset];
+      // console.log(" data values ", dataValues);
+      // console.log("data query ", dataQuery);
+
+      const dataResult = await pool.query(dataQuery, dataValues);
+      // console.log("data result ", dataResult.rows);
+      console.log(
+        "total pages ",
+        Math.ceil(totalItems / size),
+        "current page ",
+        page
       );
 
-      if (!result.rows || result.rows.length === 0) {
-        throw new CustomError("Bu kutubxona uchun azolar topilmadi");
-      }
       res.status(200).json({
         status: "ok",
-        members: result.rows,
+        members: dataResult.rows,
+        totalPages: Math.ceil(totalItems / size),
+        currentPage: page,
       });
     } catch (error) {
       next(error);
     }
   },
+
   // get member by id
   async getMemberById(req, res, next) {
     const { member_id } = req.params;

@@ -18,7 +18,7 @@ const verifyToken = (req, res, next) => {
           error: err,
         });
       }
-      console.log(decoded);
+      // console.log(decoded);
 
       req.user = decoded;
       next();

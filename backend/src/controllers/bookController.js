@@ -95,6 +95,10 @@ const getAllBooks = async (req, res, next) => {
 //  get books for the requester's library
 const getBooksBylibray = async (req, res, next) => {
   const owner_id = req.user.id;
+  const page = parseInt(req.query.page) || 0;
+  const size = parseInt(req.query.size) || 15;
+  const { categoryId, bookTitle, isbn, status } = req.query;
+
   // console.log(owner_id);
   try {
     const library = await pool.query(
@@ -104,20 +108,57 @@ const getBooksBylibray = async (req, res, next) => {
     if (!library) {
       throw new CustomError("Hech qanday kutubxona topilmadi", 404);
     }
-    console.log("library_id ", library.rows[0].library_id);
 
-    const books = await pool.query(
-      "SELECT * FROM books WHERE library_id = $1",
-      [library.rows[0].library_id]
-    );
-    if (!books || books.rows.length === 0) {
-      throw new CustomError("Bu kutubxonada kitoblar topilmadi!", 404);
+    const libraryId = library.rows[0].library_id;
+    // setting where conditions
+    let whereConditions = ["b.library_id = $1 "];
+    let values = [libraryId];
+    let index = 2;
+
+    if (categoryId) {
+      whereConditions.push(`b.category_id = $${index++}`);
+      values.push(`${categoryId}`);
     }
+
+    if (bookTitle) {
+      whereConditions.push(`b.title ILIKE $${index++}`);
+      values.push(`%${bookTitle}%`);
+    }
+
+    if (isbn) {
+      whereConditions.push(`b.isbn ILIKE $${index++}`);
+      values.push(`%${isbn}%`);
+    }
+
+    if (status) {
+      whereConditions.push(`b.status = $${index++}`);
+      values.push(status);
+    }
+
+    const whereClause = `WHERE ${whereConditions.join(" AND ")}`;
+    const offset = page * size;
+
+    const coundQuery = `SELECT COUNT(*) from books b JOIN libraries lib ON b.library_id = lib.library_id ${whereClause}`;
+
+    const countResult = await pool.query(coundQuery, values);
+    const totalItems = parseInt(countResult.rows[0].count);
+
+    const dataQuery = `SELECT * FROM books b  ${whereClause} ORDER BY b.book_id DESC LIMIT $${index++} OFFSET $${index++}`;
+    // console.log("library_id ", library.rows[0].library_id);
+    // console.log("data query ", dataQuery);
+
+    const dataValues = [...values, size, offset];
+    // console.log("data values ", dataValues);
+    const dataResult = await pool.query(dataQuery, dataValues);
+
+    // if (!dataResult || dataResult.rows.length === 0) {
+    //   throw new CustomError("Kitoblar topilmadi!", 404);
+    // }
 
     // Filter books and update status if the return_date < current_date
     const now = Date.now();
 
-    for (let b of books.rows) {
+    for (let b of dataResult.rows) {
       if (new Date(b.return_date).getTime() < now) {
         await pool.query(
           `UPDATE books SET status = 'kechikkan' WHERE book_id = $1`,
@@ -125,9 +166,14 @@ const getBooksBylibray = async (req, res, next) => {
         );
       }
     }
+
+    // console.log("total pages ", Math.ceil(totalItems / size));
+
     res.status(200).json({
       status: "ok",
-      books: books.rows,
+      books: dataResult.rows,
+      totalPages: Math.ceil(totalItems / size),
+      currentPage: page,
     });
   } catch (error) {
     console.error(error);

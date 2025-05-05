@@ -4,7 +4,7 @@ const cors = require("cors");
 const app = express();
 const { connectDB } = require("./config/db.js");
 const errorHandler = require("./utils/errorHandler.js");
-const port = process.env.PORT || 3007;
+const port = process.env.PORT || 3017;
 
 // Middleware to parse JSON
 app.use(express.json());

@@ -293,7 +293,7 @@ const libraryController = {
     const { member_id } = req.params;
     const { full_name, username, email, password, address, phonenumber } =
       req.body;
-    console.log("pass", req.body);
+    // console.log("pass", req.body);
 
     try {
       const library = await pool.query(
@@ -326,6 +326,70 @@ const libraryController = {
       res.status(200).json({
         status: "ok",
         message: "Member is updated!",
+      });
+    } catch (error) {
+      console.error(error);
+      next(error);
+    }
+  },
+  // library name, the amount of lib books, lib members, lib active rentals
+  async getLibDetailsForOwner(req, res, next) {
+    const ownerId = req.user.id;
+    try {
+      const library = await pool.query(
+        "SELECT * FROM libraries WHERE owner_id = $1",
+        [ownerId]
+      );
+      if (!library) {
+        throw new CustomError(
+          "Kutubxona topilmadi bu foydalanuvchi uchun",
+          404
+        );
+      }
+
+      const libraryId = library.rows[0].library_id;
+      const libName = library.rows[0].library_name;
+      // total count of books
+      const libBooks = await pool.query(
+        "SELECT COUNT(*) as total_books from books WHERE library_id = $1",
+        [libraryId]
+      );
+
+      if (libBooks.rows.length === 0) {
+        throw new CustomError(
+          "Sizning kutubxonangizda hali kitoblar mavjuda emas",
+          404
+        );
+      }
+      // total count of lib members
+      const libMembers = await pool.query(
+        "SELECT COUNT(*) as total_members FROM library_members lib_m JOIN users u ON lib_m.user_id = u.user_id WHERE lib_m.library_id = $1",
+        [libraryId]
+      );
+
+      if (libMembers.rows.length === 0) {
+        throw new CustomError(
+          "Sizning kutubxonangizda hali foydalanuvchilar mavjuda emas",
+          404
+        );
+      }
+      // total count of active rentals
+      const totalActiveRentals = await pool.query(
+        "SELECT COUNT(*) as total_active_rentals FROM rentals WHERE status = 'jarayonda' AND owner_id = $1",
+        [ownerId]
+      );
+
+      if (totalActiveRentals.rows.length === 0) {
+        throw new CustomError(
+          "Sizning kutubxonangizda hali active bo'lgan ijaralar mavjuda emas",
+          404
+        );
+      }
+      res.status(200).json({
+        totalMembers: libMembers.rows[0].total_members,
+        totalBooks: libBooks.rows[0].total_books,
+        totalActiveRentals: totalActiveRentals.rows[0].total_active_rentals,
+        libName,
       });
     } catch (error) {
       console.error(error);

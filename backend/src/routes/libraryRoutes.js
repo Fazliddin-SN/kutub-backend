@@ -68,5 +68,12 @@ router.put(
   libraryController.updateMember
 );
 router.get("/books", verifyToken, roleGuard("owner"), getBooksBylibray);
+// get library details total books, members and active rentals count and library name
+router.get(
+  "/details",
+  verifyToken,
+  roleGuard("owner"),
+  libraryController.getLibDetailsForOwner
+);
 
 module.exports = router;

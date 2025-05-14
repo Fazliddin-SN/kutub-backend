@@ -1,6 +1,15 @@
 const { pool } = require("../config/db.js");
 const { CustomError } = require("../utils/customError.js");
+const { notifyMember, notifyOwner } = require("./notificationsController.js");
 
+// Format dates as YYYY-MM_DD
+const fmt = (d) =>
+  d.toLocaleDateString("uz-UZ", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "Asia/Tashkent",
+  });
 const getAllRentals = async (req, res, next) => {
   const owner_id = req.user.id;
   try {
@@ -52,7 +61,7 @@ const fetchRentalById = async (req, res, next) => {
 const createRental = async (req, res, next) => {
   const owner_id = req.user.id;
   const { user_id, book_id, rental_date, due_date, return_date } = req.body;
-  console.log(req.body);
+  // console.log(req.body);
   try {
     // parse into JS Dates
     const rentalDt = new Date(rental_date);
@@ -96,6 +105,44 @@ const createRental = async (req, res, next) => {
     if (book.rows.length < 0) {
       throw new CustomError("Kitob topilmadi bu id bilan!");
     } // create rental
+
+    // get user and owner chat IDs and named
+    const userTgData = await pool.query(
+      "SELECT telegram_chat_id, username FROM users WHERE user_id = $1",
+      [user_id]
+    );
+    const ownerTgData = await pool.query(
+      "SELECT u.telegram_chat_id FROM users u JOIN libraries lib ON u.user_id = lib.owner_id WHERE lib.library_id = $1",
+      [library.rows[0].library_id]
+    );
+
+    // notify the member
+
+    if (userTgData.rows[0].telegram_chat_id) {
+      await notifyMember(
+        userTgData.rows[0].telegram_chat_id,
+        book.rows[0].title,
+        library.rows[0].library_name,
+        fmt(rental_date),
+        fmt(return_date),
+        fmt(return_date),
+        null
+      );
+    }
+
+    // notify the owner
+    if (ownerTgData.rows[0].telegram_chat_id) {
+      await notifyOwner(
+        ownerTgData.rows[0].telegram_chat_id,
+        user.rows[0].username,
+        book.rows[0].title,
+        fmt(rental_date),
+        fmt(return_date),
+        fmt(return_date),
+        null
+      );
+    }
+
     const rental = await pool.query(
       "INSERT INTO rentals (user_id, book_id, rental_date, due_date, return_date, owner_id) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
       [
@@ -114,11 +161,13 @@ const createRental = async (req, res, next) => {
       "UPDATE  books SET status = 'ijarada' where book_id = $1",
       [book_id]
     );
+
     res.status(201).json({
       message: "Ijara yaratildi",
       rental: rental.rows[0],
     });
   } catch (error) {
+    console.error(error);
     next(error);
   }
 };
@@ -191,7 +240,6 @@ const updateRentalData = async (req, res, next) => {
 const updateRentalReturn = async (req, res, next) => {
   const owner_id = req.user.id;
   const { rental_id, book_id } = req.query;
-  console.log(req.query);
 
   try {
     if (!book_id || !rental_id) {
@@ -213,6 +261,58 @@ const updateRentalReturn = async (req, res, next) => {
     // check if rental updated
     if (result.rows.length === 0) {
       throw new CustomError("Rental topilmadi!", 404);
+    }
+
+    // make sure book exists
+    const book = await pool.query("SELECT * FROM books where book_id = $1", [
+      book_id,
+    ]);
+
+    if (book.rows.length < 0) {
+      throw new CustomError("Kitob topilmadi bu id bilan!");
+    }
+    // make sure user exists
+    const user = await pool.query("SELECT * from users where user_id = $1", [
+      result.rows[0].user_id,
+    ]);
+    if (user.rows.length === 0) {
+      throw new CustomError("foydalanuvchi topilmadi bu id bilan!");
+    }
+    // get user and owner chat IDs and named
+    const userTgData = await pool.query(
+      "SELECT telegram_chat_id, username FROM users WHERE user_id = $1",
+      [result.rows[0].user_id]
+    );
+    const ownerTgData = await pool.query(
+      "SELECT u.telegram_chat_id FROM users u JOIN libraries lib ON u.user_id = lib.owner_id WHERE lib.library_id = $1",
+      [library.rows[0].library_id]
+    );
+
+    // notify the member
+
+    if (userTgData.rows[0].telegram_chat_id) {
+      await notifyMember(
+        userTgData.rows[0].telegram_chat_id,
+        book.rows[0].title,
+        library.rows[0].library_name,
+        fmt(result.rows[0].rental_date),
+        fmt(result.rows[0].due_date),
+        fmt(result.rows[0].return_date),
+        fmt(result.rows[0].actual_return_date)
+      );
+    }
+
+    // notify the owner
+    if (ownerTgData.rows[0].telegram_chat_id) {
+      await notifyOwner(
+        ownerTgData.rows[0].telegram_chat_id,
+        user.rows[0].username,
+        book.rows[0].title,
+        fmt(result.rows[0].rental_date),
+        fmt(result.rows[0].due_date),
+        fmt(result.rows[0].return_date),
+        fmt(result.rows[0].actual_return_date)
+      );
     }
 
     await pool.query(

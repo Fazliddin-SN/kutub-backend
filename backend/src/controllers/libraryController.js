@@ -113,7 +113,7 @@ const libraryController = {
   // Add members
   async addMember(req, res, next) {
     const owner_id = req.user.id;
-    const { full_name, user_name, email, password, address, phone_number } =
+    const { full_name, username, email, password, address, phonenumber } =
       req.body;
     // console.log("req body ", req.body);
 
@@ -133,7 +133,7 @@ const libraryController = {
       //  Insert new user record
       const newUser = await pool.query(
         "INSERT INTO users (full_name, username, email, password, address, phonenumber ) values ($1, $2, $3, $4, $5, $6) RETURNING *",
-        [full_name, user_name, email, hashedPassword, address, phone_number]
+        [full_name, username, email, hashedPassword, address, phonenumber]
       );
       // find lib by owner id
       const library = await pool.query(

@@ -107,6 +107,7 @@ async function notifyOwner(
   actual_return_date
 ) {
   if (chatId) {
+    /////
     if (actual_return_date !== null && actual_return_date) {
       const text = `
 ━━━━━━━━━━━━━━━
@@ -135,8 +136,10 @@ async function notifyOwner(
 ⏳ *Qaytarish:*    _${expectedReturnDate}_
 `;
 
-    await bot.api.sendMessage(chatId, text, { parse_mode: "Markdown" });
+    return await bot.api.sendMessage(chatId, text, { parse_mode: "Markdown" });
   }
+  console.log("dadada");
+
   return;
 }
 

@@ -117,7 +117,6 @@ const createRental = async (req, res, next) => {
     );
 
     // notify the member
-
     if (userTgData.rows[0].telegram_chat_id) {
       await notifyMember(
         userTgData.rows[0].telegram_chat_id,
@@ -166,6 +165,7 @@ const createRental = async (req, res, next) => {
       message: "Ijara yaratildi",
       rental: rental.rows[0],
     });
+    return;
   } catch (error) {
     console.error(error);
     next(error);

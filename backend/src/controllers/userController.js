@@ -80,6 +80,7 @@ const getAllBooksForUsers = async (req, res, next) => {
         404
       );
     }
+    // console.log("Books for users ", books.rows);
 
     res.status(200).json({
       status: "ok",

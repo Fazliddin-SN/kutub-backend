@@ -41,6 +41,14 @@ router.post(
   roleGuard("owner"),
   libraryController.addMember
 );
+
+/// MEMBERS
+router.post(
+  "/member",
+  verifyToken,
+  roleGuard("owner"),
+  libraryController.addMemberWithUsername
+);
 router.get(
   "/members",
   verifyToken,

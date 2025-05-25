@@ -157,6 +157,60 @@ const libraryController = {
     }
   },
 
+  //  ADD MEMBER WITH USERNAME, THIS HAPPENS WHEN USERS HAVE ALREADY REGISTERED IN THE SYSTEM
+  async addMemberWithUsername(req, res, next) {
+    const owner_id = req.user.id;
+    const { username } = req.query;
+    try {
+      const userData = await pool.query(
+        "SELECT * FROM users WHERE username = $1",
+        [username]
+      );
+
+      if (userData.rows.length === 0) {
+        throw new CustomError(
+          `Bu username "${username}" bilan oldin ro'yxatdan o'tilmagan. Iltmos birinchi ro'yxatdan o'ting!!`,
+          400
+        );
+      }
+
+      // find lib by owner id
+      const library = await pool.query(
+        "SELECT * FROM libraries WHERE owner_id = $1",
+        [owner_id]
+      );
+
+      if (!library) {
+        throw new CustomError("Library not found!", 404);
+      }
+
+      // check if this user has not been join this library before
+
+      const libMember = await pool.query(
+        "SELECT * FROM library_members WHERE library_id = $1 AND user_id = $2",
+        [library.rows[0].library_id, userData.rows[0].user_id]
+      );
+
+      if (libMember.rows.length > 0) {
+        throw new CustomError(
+          "Bu Foydalanuvchi allaqachon sizning kutubxonangiz azosi!",
+          400
+        );
+      }
+      await pool.query(
+        "INSERT INTO library_members (library_id, user_id) VALUES ($1, $2) RETURNING * ",
+        [library.rows[0].library_id, userData.rows[0].user_id]
+      );
+
+      res.status(201).json({
+        message: "New member registered",
+      });
+    } catch (error) {
+      console.error("Failed to add new memeber with username", error);
+      next(error);
+    }
+  },
+
   async getLibraryMembers(req, res, next) {
     const owner_id = req.user.id;
     const page = parseInt(req.query.page) || 0;
@@ -279,7 +333,7 @@ const libraryController = {
         "DELETE FROM library_members WHERE library_id = $1 AND user_id = $2",
         [library.rows[0].library_id, member_id]
       );
-      await pool.query("DELETE FROM users WHERE user_id = $1", [member_id]);
+
       res.status(200).json({
         message: "User removed",
         status: "ok",

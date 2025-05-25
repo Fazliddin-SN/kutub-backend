@@ -5,13 +5,15 @@ const { version } = require("joi");
 
 // to create a connecttion with google cloud storage
 const storage = new Storage({
-  projectId: process.env.GCS_BUCKET_NAME,
-  keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+  projectId: process.env.GCS_BUCKET_NAME || "libbookimages",
+  keyFilename:
+    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
+    "my-book-covers-bf2b863936e7.json",
 });
 
-const bucketName = process.env.GCS_BUCKET_NAME;
-const location = process.env.GCS_BUCKET_LOCATION;
-const storageClass = process.env.GCS_STORAGE_CLASS;
+const bucketName = process.env.GCS_BUCKET_NAME || "libbookimages";
+const location = process.env.GCS_BUCKET_LOCATION || "US";
+const storageClass = process.env.GCS_STORAGE_CLASS || "STANDARD";
 
 // Get a reference to a Cloud Storage bucket.
 //@param name — Name of the bucket.

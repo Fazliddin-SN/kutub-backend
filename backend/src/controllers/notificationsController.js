@@ -64,8 +64,9 @@ async function notifyMember(
   expectedReturnDate,
   actual_return_date
 ) {
-  if (actual_return_date !== null && actual_return_date) {
-    const text = `
+  if (chatId) {
+    if (actual_return_date !== null && actual_return_date) {
+      const text = `
 🎉 <b>Siz ijara olgan kitobni qaytarib berdingiz!!!</b>
 
 📖 <b>Kitob nomi:</b> «${bookName}»  
@@ -77,9 +78,9 @@ async function notifyMember(
 
 <i>Muvaffaqiyatli o‘qish tilaymiz!</i>
 `;
-    return await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
-  }
-  const text = `
+      return await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
+    }
+    const text = `
 🎉 <b>Siz kitob ijaraga oldingiz!</b>
 
 📖 <b>Kitob nomi:</b> «${bookName}»  
@@ -90,7 +91,9 @@ async function notifyMember(
 
 <i>Muvaffaqiyatli o‘qish tilaymiz!</i>
 `;
-  await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
+    await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
+  }
+  return;
 }
 
 // when a new rental is made
@@ -103,8 +106,9 @@ async function notifyOwner(
   expectedReturnDate,
   actual_return_date
 ) {
-  if (actual_return_date !== null && actual_return_date) {
-    const text = `
+  if (chatId) {
+    if (actual_return_date !== null && actual_return_date) {
+      const text = `
 ━━━━━━━━━━━━━━━
 📚 * ijara olingan kitob qaytarib berildi!*
 ━━━━━━━━━━━━━━━
@@ -116,10 +120,10 @@ async function notifyOwner(
 ⏳ *Qaytarilish Sanasi:*    _${actual_return_date}_
 `;
 
-    return await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
-  }
+      return await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
+    }
 
-  const text = `
+    const text = `
 ━━━━━━━━━━━━━━━
 📚 *Yangi ijara*
 ━━━━━━━━━━━━━━━
@@ -131,7 +135,9 @@ async function notifyOwner(
 ⏳ *Qaytarish:*    _${expectedReturnDate}_
 `;
 
-  await bot.api.sendMessage(chatId, text, { parse_mode: "Markdown" });
+    await bot.api.sendMessage(chatId, text, { parse_mode: "Markdown" });
+  }
+  return;
 }
 
 // this notifies the members about how many days left to return a book
@@ -143,9 +149,10 @@ async function notifyMemForBookReturn(
   daysleft,
   rentalDate
 ) {
-  // console.log("chat ids book name ", chatId, bookName, daysleft);
+  if (chatId) {
+    // console.log("chat ids book name ", chatId, bookName, daysleft);
 
-  const text = `
+    const text = `
 ⏰ <b>Eslatma!</b>
 
 📚 <b>Kitob nomi:</b> «${bookName}»  
@@ -156,9 +163,9 @@ async function notifyMemForBookReturn(
 <i>Iltimos, kitobni belgilangan muddatda qaytarishni unutmang!</i>
 `;
 
-  if (daysleft === 0 && chatId) {
-    const rentedOn = rentalDate.toISOString().split("T")[0];
-    const borrowerMsg = `
+    if (daysleft === 0) {
+      const rentedOn = rentalDate.toISOString().split("T")[0];
+      const borrowerMsg = `
 🚨 <b>Eslatma!</b>
 
 📚 <b>Kitob:</b> «${bookName}»  
@@ -170,11 +177,13 @@ async function notifyMemForBookReturn(
 🙏 <i>Iltimos, kitobni kechiktirmasdan qaytarib bering.</i>
 `;
 
-    return await bot.api.sendMessage(chatId, borrowerMsg, {
-      parse_mode: "HTML",
-    });
+      return await bot.api.sendMessage(chatId, borrowerMsg, {
+        parse_mode: "HTML",
+      });
+    }
+    return await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
   }
-  return await bot.api.sendMessage(chatId, text, { parse_mode: "HTML" });
+  return;
 }
 
 /// notify owner about book return actions
@@ -185,9 +194,10 @@ async function notifyOwnerForBookReturn(
   daysLeft,
   rentalDate
 ) {
-  if (daysLeft === 0 && chatId) {
-    const rentedOn = rentalDate.toISOString().split("T")[0];
-    const ownerMsg = `
+  if (chatId) {
+    if (daysLeft === 0) {
+      const rentedOn = rentalDate.toISOString().split("T")[0];
+      const ownerMsg = `
 📣 <b>Eslatma!</b>
 
 👤 <b>Foydalanuvchi:</b> ${row.username}  
@@ -198,9 +208,11 @@ async function notifyOwnerForBookReturn(
 🙏 <i>Iltimos, kitobni qabul qilib olishingizni unutmang.</i>
 `;
 
-    return await bot.api.sendMessage(chatId, ownerMsg, { parse_mode: "HTML" });
-  }
-  const ownerMsg = `
+      return await bot.api.sendMessage(chatId, ownerMsg, {
+        parse_mode: "HTML",
+      });
+    }
+    const ownerMsg = `
 🚨 <b>Eslatma!</b>
 
 👤 <b>Foydalanuvchi:</b> ${user_name}  
@@ -209,7 +221,9 @@ async function notifyOwnerForBookReturn(
 
 🙏 <i>Iltimos, muddatni nazorat qilib, kitobni o‘z vaqtida qabul qilishingizni unutmang.</i>
 `;
-  return await bot.api.sendMessage(chatId, ownerMsg, { parse_mode: "HTML" });
+    return await bot.api.sendMessage(chatId, ownerMsg, { parse_mode: "HTML" });
+  }
+  return;
 }
 
 // notify when any book is marked as returned

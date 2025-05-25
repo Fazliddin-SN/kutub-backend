@@ -6,7 +6,6 @@ const path = require("path");
 const { bucketName, storage, deleteFromGCS } = require("../middlewares/gcs.js");
 require("dotenv").config();
 const { CustomError } = require("../utils/customError.js");
-const { error } = require("console");
 
 const register = async (req, res, next) => {
   const { full_name, username, email, password, address, phonenumber } =
@@ -41,16 +40,15 @@ const register = async (req, res, next) => {
   }
 };
 // Login page
-
 const login = async (req, res, next) => {
-  const { email, password } = req.body;
-  console.log("body", req.body);
+  const { username, password } = req.body;
 
   try {
     // check if user exists
-    const userQuery = await pool.query("SELECT * FROM users WHERE email = $1", [
-      email,
-    ]);
+    const userQuery = await pool.query(
+      "SELECT * FROM users WHERE username = $1",
+      [username]
+    );
     if (userQuery.rows.length === 0) {
       throw new CustomError("Parol yoki Email xato", 400);
     }
